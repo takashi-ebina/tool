@@ -1,0 +1,1599 @@
+---
+title: 【Struts入門】今さらStruts1.3.10を勉強したのでまとめてみた【初心者向け】
+tags: Struts JSP servlet Java 初心者
+author: ebichan_88
+slide: false
+---
+#はじめに
+2019年の時点でstruts1でWebアプリケーションを新規開発をする事はほとんどないと思いますが、
+それでもstruts1で構築され、現在でも動いているWebアプリケーションはまだまだ存在すると思います。
+
+今後もプロジェクトで関わる可能性が大いにあるフレームワークですが、
+すでに枯れた技術でもあり、ほかの技術に比べて、学習できる書籍やサイトがそこまで多くありません。
+
+そこで今回、struts1についてこれまで学習したことをまとめてみました。
+自分が新人で初めてstruts1を勉強した時に、
+この資料があれば嬉しかったなというものを作ろう！という思いでこの記事を書きました。
+今後、少しでも多くの方がこの記事を読んで、struts1の概要を理解してもらえたら幸いです。
+
+#本記事が向いている人
+
+* **struts1についての知識がないが、一通り概要を理解したい方**
+
+#ゴール
+
+* **struts1の構成や特徴などの大枠を理解できる状態**
+* **この記事を足がかりに、struts1の学習がスムーズに進められる状態**
+
+#strutsについて
+<img width="1425" alt="スクリーンショット 2019-08-27 19.13.45.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/cdf88007-c395-b7f9-3351-c9b1a47da862.png">
+
+strutsはApacheソフトウェア財団が提供している、MVCモデルを採用した、Webアプリケーションを作成するためのオープンソースのフレームワークです。
+
+2000年にリリース後、struts1はJavaベースのWebアプリケーション開発の主流となりました。
+その後、2008年12月に最終バージョンであるstruts1.3.10がリリースされ、2013年4月に正式にサポートが終了となりました。[^1]
+
+<details><summary>MVCモデルとは</summary>　アプリケーションをModel, View, Controllerという役割ごとに分割してコーディングを行うモデルとなります。
+　MVCモデルの詳細に関しては、以下の記事を参考になります。
+　[MVCモデルについて](https://qiita.com/s_emoto/items/975cc38a3e0de462966a)</details>
+
+
+[^1]: [Apache Struts 1 End-Of-Life (EOL) Press Release](https://struts.apache.org/struts1eol-press.html)
+
+#strutsの特徴
+strutsの主な特徴は以下が挙げられます。
+##１.遷移先などの処理を設定ファイル（struts-config.xml）で管理
+###<font color="Red">★★　ここが一番重要です！！　★★</font>
+
+strutsではリスエストに対応する処理を**設定ファイル（struts-config.xml）**で管理しており、遷移先や実行処理を修正する際は**struts-config.xmlを修正すれば良い**です。
+
+そのため、struts-config.xmlの内容が理解できれば、**どの画面に遷移するか、どの処理が実行されるがとても簡単に理解できるようになります。**
+
+jspファイルと設定ファイル（struts-config.xml）の関係性は以下となります。
+
+###jspファイルと設定ファイル（struts-config.xml）の関係性について
+
+|jspファイル| 設定ファイル（struts-config.xml） |
+|----|----|
+|\<form\>タグのアクション属性にAction名を定義|リクエスト時に\<action\>エレメントのpath属性と一致するアクションを実行|
+
+<img width="625" alt="スクリーンショット 2019-08-27 23.25.43.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/60e64d54-1a9a-7ec0-2071-9dd7362f0404.png">
+###[struts-config.xmlの説明に関してはこちら](#５struts設定ファイルstruts-configxml) 
+
+##２.validationの提供
+Strutsでは入力データの必須チェックや文字数チェックの処理などのvalidationの機能が提供されており、入力チェック用のプログラムを実装する手間が省けます。
+
+以下のログイン画面の入力チェックも、strutsが提供している**validation.xml**でパラメータの検証ルールを定義し、
+**メッセージ･リソースファイル**を用いてエラーの際に表示するメッセージを設定する事で実装が可能となります。
+
+![9月-10-2019 01-10-25.gif](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/af8568ad-e604-c948-f6b6-fc480776ac3e.gif)
+
+###[validationの説明に関してはこちら](#２-３アクションフォームのvalidationについて)
+
+##３.タグライブラリの提供
+Strutsは`<logic>`タグや`<bean>`タグなど独自のタグライブラリが用意されており、Javaコードの代わりに専用タグライブラリを使用することで、**画面（JSP）の可読性の向上や記述レベルの統一**が可能となります。
+
+###[タグライブラリの説明に関してはこちら](#４jsp)
+
+##４.二度押し防止機能（トークンチェック）の提供
+
+Strutsでは同じ処理が複数回実行されることを防止するため、トランザクショントークンを用いた**トークンチェックの機能**が提供されています。
+ブラウザから送信されたトークンとsessionスコープに格納されたトークンを比較することで処理を継続すべきか判定することができ、同じサブミットボタンを二重クリックした場合や、戻るボタンを利用した不正な画面遷移の場合に、エラーとすることが可能です。
+
+以下の画面例だと、次の遷移をした場合に、
+**入力画面→確認画面→登録完了画面→（ブラウザの戻るボタンを用いて）確認画面**
+確認画面から登録ボタン押下時に不正遷移と判断されエラー画面に遷移するように実装されています。
+![3月-29-2020 18-25-08.gif](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/94614961-ded4-484b-f9e2-93a252678ca3.gif)
+
+###[二度押し防止機能の説明に関してはこちら](#二度押しチェックについて)
+
+##５.例外処理機能の提供
+strutsでは例外発生時に、struts-config.xmlの`<global-exceptions>`タグを用いて、例外が発生した際の処理を定義することができます。
+そのため、**標準のエラー画面（404エラーなど）が表示されることなく例外処理のハンドリングをすることが可能**です。
+
+###[例外処理機能の説明に関してはこちら](#例外処理について)
+
+##６.その他
+
+* **ログ出力機能（Commons-Loggingを利用）**
+* **国際化対応** など
+
+
+#strutsの処理の流れ
+strutsの構成・処理の流れは下図となります。
+<img width="1076" alt="スクリーンショット 2019-08-18 12.35.30.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/71de4c7f-7e11-58f4-124d-5bb50d7a293f.png">「Struts逆引き大全333の極意」を元に作成
+
+図の処理の流れをざっくり説明すると以下となります。
+
+**１.　クライアントからのリクエストを送信**
+**２.　アクションサーブレットが設定ファイルをもとに実行する処理を特定**
+**３.　クライアントから送信された情報をアクションフォームに設定**
+**４.　アクションクラスの実行**
+**５.　アクションクラスの実行結果をもとに遷移先を決定**
+
+#strutsの基本構成
+strutsの基本的な構成要素は「strutsの処理の流れ」で図に記載した
+
+* **アクションサーブレット**
+* **アクションフォーム**
+* **アクションクラス**
+* **JSP**
+* **struts設定ファイル（struts-config.xml）**
+
+の５つに加えて
+
+* **Web.xml**
+* **メッセージ・リソースファイル**
+
+などが挙げられます。
+
+##１.アクションサーブレット
+
+##１-１.アクションサーブレットの概要
+アクションサーブレットは**MVC構成のコントローラの役割を持つサーブレット**です。
+リクエストを受け付けると、リクエストを元にパラメータをアクションフォームに格納、アクションクラスのexecuteメソッドの実行、アクションクラスの戻り値を元に画面遷移を実施するなどの処理をRequestProcessorに依頼します。
+
+##２.アクションフォーム
+
+##２-１.アクションフォームの概要
+フォームから入力されたリクエストデータを保持するBeanです。
+<details><summary>フォームとは</summary>　Web上で、利用者からの入力を受け付ける操作要素の集合を指します。
+　Webで会員登録する際に氏名や電話番号などを入力するフィールドがそれに該当します。</details>
+
+以下の実装をすることでアクションフォームの作成が可能となります。
+
+* **org.apache.struts.action.ActionFormを継承したクラスを作成**
+* **プロパティおよび各プロパティのgetter/setterメソッドを実装**
+
+```java:ActionForm.java
+import org.apache.struts.action.ActionForm;
+
+public class UserActionForm  extends ActionForm {
+
+	private String id; // ユーザーID
+	private String pass; // パスワード
+
+    public String getId() {
+      return id;
+	}
+	public void setId(String id) {
+      this.id = id;
+    }
+	public String getPass() {
+	  return pass;
+	}
+	public void setPass(String pass) {
+      this.pass = pass;
+    }
+}
+```
+
+##２-２.DynaActionFormについて
+アクションフォームを定義する上でActionFormを継承したクラスの作成とプロパティのgetter/setterメソッドを実装する必要がありますが、DynaActionFormを用いるとアクションフォームBeanではなく、**struts-config.xmlでプロパティを定義出来る**ため、クラスの作成が不要となります。
+
+DynaActionFormは以下のように記述します。
+
+```xml:struts-config.xml
+    <form-beans>
+    <form-bean name="UserActionForm" type="org.apache.struts.action.DynaActionForm">
+      <form-property name="id" type="java.lang.String" initial=""/>
+      <form-property name="pass" type="java.lang.String" initial=""/>
+       </form-bean>
+    </form-beans>
+```
+
+DynaActionFormで記述するエレメントの詳細に関して以下に説明します。
+###\<form-bean\>エレメント
+
+```xml
+<form-bean name="UserActionForm" type="org.apache.struts.action.DynaActionForm">
+```
+
+**type属性に`org.apache.struts.action.DynaActionForm`を定義**します。
+（Validation機能を利用したい場合は`org.apache.struts.validator.DynaValidatorForm`を定義）
+###\<form-property\>エレメント
+
+```xml
+      <form-property name="id" type="java.lang.String" initial=""/>
+      <form-property name="pass" type="java.lang.String" initial=""/>
+```
+
+**neme属性にプロパティ名**、**type属性に型**、**initial属性に初期値**を定義します。
+initial属性を省略した場合には、数字は0に、オブジェクトはnullに初期化されます。
+
+##２-３.アクションフォームのvalidationについて
+アクションフォームはフォームから入力されたリクエストデータを保持するBeanですが、
+リスエストデータを保持する際、**各プロパティに対して、Validation（入力値チェック）を行うことが可能**です。
+
+validationの処理を追加するには以下の対応をする必要があります。
+
+###対応１：「org.apache.struts.validator.ValidatorForm」を継承する。
+アクションフォームは**ActionFormクラス**を継承する必要がありますが、継承元を**ValidatorFormクラス**に変更する事で、validationの機能を追加することができます。
+
+```java:ActionForm.java
+import org.apache.struts.validator.ValidatorForm;
+// ActionFormからValidatorFormに継承元を変更する
+public class SampleActionForm extends ValidatorForm {
+	  private String id;  
+
+	  public SampleActionForm(String id) {this.id = id;}
+
+      public void setId(String id) {this.id = id;}
+	  public String getId() {return id;}
+	  
+}
+```
+
+###対応２：struts-config.xmlに「org.apache.struts.validator.ValidatorPlugIn」を追加する。
+アクションフォームだけでなくstruts-config.xmlの設定も変更が必要となります。
+struts-config.xmlの`<plug-in>`タグに以下の定義を追加することで、Validationの機能が追加されます。
+
+```xml:struts-config.xml
+  <plug-in className="org.apache.struts.validator.ValidatorPlugIn">
+    <set-property
+        property="pathnames"
+        value="/org/apache/struts/validator/validator-rules.xml,
+               /WEB-INF/validation.xml"/>
+  </plug-in>
+```
+
+Strutsのvalidatorは、`<plug-in>`タグで定義した、以下の２つの定義ファイルを元に、処理が実行されます。
+
+* **`validator-rules.xml`：入力チェックのルールを詳細に定義したファイル**
+* **`validation.xml`：リクエストやアクションフォーム単位に、入力チェックを定義したファイル**
+
+
+###対応３：**struts-config.xmlに入力チェックを実施することを明示的に宣言する**
+
+struts-config.xml内の`<action>`エレメントの**validate属性をtrue**にすることでvalidation.xmlで定義した入力値チェックが実施されます。
+
+また、**input属性**には**入力値チェックに引っかかった場合の遷移先**を定義する必要があります。
+
+```xml:struts-config.xml
+<action
+ path="xxxxx" type="xxxxx" name="xxxxx" scope="xxxxx"              
+ validate="true"               
+ input="/index.jsp">           
+<forward name="xxxxx" path="xxxxx"/> 
+</action>
+```
+
+###対応４：**validation.xmlに実施する入力チェックの内容を定義する。**
+
+アクションフォームとstruts-config.xmlの設定が完了したら、`validation.xml`に
+
+* **適用する入力チェック**
+* **エラーメッセージ出力に利用するメッセージリソースのkey**
+
+などを定義します。
+
+```xml:validation.xml
+<form-validation>
+    <formset>
+        <form name="SampleActionForm">
+            <field
+                property="id"
+                depends="required,mask">
+                <msg name="mask" key="field.invalidate" />
+                  <arg key="field.id" />
+                   <var>
+                        <var-name>mask</var-name>
+                        <var-value>^[0-9a-zA-Z]*$</var-value>
+                    </var>
+            </field>
+       </form>
+    </formset>
+</form-validation>
+```
+
+```properties:MessageResources.properties
+field.invalidate={0} は半角英数字で入力してください
+field.id=id
+```
+
+上記の定義の場合、**idというプロパティに対して、必須チェックと半角英数字チェックを定義**しています。
+半角英数字チェックでエラーが発生した場合は**「idは半角英数字で入力してください」**というメッセージが出力されるようになります。
+
+メッセージリソースファイルの定義方法に関してはこちらを参照してください。
+**[7.メッセージリソースファイル](#７メッセージリソースファイル)**
+
+##２-４.validation.xmlで定義される各タグについて
+###\<form\>タグ
+入力チェック対象のBeanごとに`<form>`タグを定義し、その**name属性にアクションフォームの名前**を指定します。
+
+```xml
+<form name="SampleActionForm">
+```
+
+###\<field\>タグ
+各プロパティに対して実施する入力チェックに関しては`<field>`タグで定義します。
+`<field>`タグの **property属性には入力チェックを実施するプロパティ名**を、**depends属性には入力チェック名**を指定します。（複数適用する場合はカンマで区切る。）
+
+以下の定義の場合、idというプロパティに対して、**必須チェック（required）**と**指定のマスクパターンに合致しているかチェック（mask）**を実施します。
+
+指定のマスクパターンの詳細は後述する`<var>`タグで定義します。
+
+```xml
+<field　property="id"　depends="required,mask">
+```
+
+###\<msg\>タグ
+入力チェックが失敗した場合に生成するエラーメッセージに関しては`<msg>`タグで定義をします。
+**name属性はどのルールが通らなかった場合に表示するか指定**するもので、<field>タグのdepends属性で指定されている値から１つ指定します。**key属性には表示するメッセージのキーを指定**します。
+
+key属性に指定したキーに紐づくメッセージは**メッセージリソースファイル**で定義する必要があります。
+
+```xml
+<msg name="mask" key="field.invalidate" />
+```
+
+###\<arg\>タグ
+メッセージリソースファイルに設定されているメッセージが以下のような形式だった場合
+
+```
+{0} は半角英数字で入力してください
+```
+
+`<arg>`タグのkey属性で定義した値を{0}の箇所にセットすることが可能となります。
+
+###\<var\>タグ
+入力チェックに必要なパラメータを定義しています。
+
+###入力チェックルールの定義一覧
+
+|検証ルール名| 検証内容 |パラメーター\<var-name\>|指定値\<var-value\>|
+|----|----|----|----|
+|required|必須入力チェック|–|–|–|
+|requiredif	|条件付きのフィールド必須入力チェック|field[数値]|依存するフィールド名|
+|requiredif	|条件付きのフィールド必須入力チェック|fieldTest[数値]	|依存するフィールドに対する条件(NULL or NOTNULL or EQUAL)|
+|requiredif	|条件付きのフィールド必須入力チェック|fieldValue[数値]	|依存するフィールドの比較値(fieldTestがEQUALの場合のみ指定する)|
+|requiredif	|条件付きのフィールド必須入力チェック|fieldIndexed[数値]	|依存するフィールドがindexed形式かどうかを指定する (true | false[default])|
+|requiredif	|条件付きのフィールド必須入力チェック|fieldJoin	|依存するフィールドが複数ある場合、フィールド間の依存条件(AND[default] or OR )|
+|validwhen	|関連する複数のフィールドに対する入力チェック|test|	((otherField == null ) or (*this* != null))のような式|
+|minlength	|指定の長さ以上かをチェック|minlength|	|最小値|
+|maxlength	|指定の長さ以下かをチェック|maxlength|	|最大値|
+|mask	|指定のマスクパターンに合致しているかチェック|mask	|Perl5互換の正規表現パターン|
+|byte	|Byteクラスを生成できる文字列かをチェック|–	|byte値の文字列|
+|short	|Shortクラスを生成できる文字列かをチェック|–	|short値の文字列|
+|integer	|Integerクラスを生成できる文字列かをチェック|–	|integer値の文字列|
+|long	|Longクラスを生成できる文字列かをチェック|–	|long値の文字列|
+|float	|Floatクラスを生成できる文字列かをチェック|–	|float値の文字列|
+|double	|Doubleクラスを生成できる文字列かをチェック|–	|double値の文字列|
+|byteLocale	|プリミティブ型のbyteに変換可能な文字列かをユーザーのロケールを考慮してチェック|–	|byte値の文字列|
+|shortLocale	|プリミティブ型のbyteに変換可能な文字列かをユーザーのロケールを考慮してチェック|–	|short値の文字列|
+|integerLocale	|プリミティブ型のshortに変換可能な文字列かをユーザーのロケールを考慮してチェック|–	|integer値の文字列|
+|longLocal	|プリミティブ型のlongに変換可能な文字列かをユーザーのロケールを考慮してチェック|–	|long値の文字列|
+|floatLocale	|プリミティブ型のfloatに変換可能な文字列かをユーザーのロケールを考慮してチェック|–	|float値の文字列|
+|doubleLocale	|プリミティブ型のdoubleに変換可能な文字列かをユーザーのロケールを考慮してチェック|–	|double値の文字列|
+|date	|Dateクラスを生成できる文字列かをチェック|datePattern (任意)	|日付パターン文字列。フォーマットはSimpleDateFormatのコンストラクタを参照。datePatternStrictとは排他指定|
+|date|Dateクラスを生成できる文字列かをチェック|datePatternStrict (任意)	|厳密なチェックが行われる以外はdatePatternと同様。datePatternとは排他指定|
+|intRange	|指定した2つのInteger値の間にあるかをチェック|min	|最小値のinteger文字列|
+|intRange|指定した2つのInteger値の間にあるかをチェック|max|最大値のinteger文字列|
+|longRange	|指定した2つのLong値の間にあるかをチェック|min	|最小値のlong文字列|
+|longRange	|指定した2つのLong値の間にあるかをチェック|max	|最大値のlong文字列|
+|floatRange	|指定した2つのFloat値の間にあるかをチェック|min	|最小値のfloat文字列|
+|floatRange	|指定した2つのFloat値の間にあるかをチェック|max	|最大値のfloat文字列|
+|doubleRange	|指定した2つのDouble値の間にあるかをチェック|min	|最小値のdouble文字列|
+|doubleRange	|指定した2つのDouble値の間にあるかをチェック|max	|最大値のdouble文字列|
+|creditCard	|正当なクレジットカード番号のフォーマットかをチェック|–	|–|
+|email	|正当なメールアドレスのフォーマットかをチェック|–|	–|
+|url	|正当なURLのフォーマットかをチェック|allowallschemes (任意)	|xxx://192.168.1.1/abc/のような未知のスキーマを許可(true or false[default])|
+|url	|正当なURLのフォーマットかをチェック|allow2slashes (任意)	|http://1.1.1.1//a/のような2重スラッシュを許可(true or false[default])|
+|url	|正当なURLのフォーマットかをチェック|nofragments (任意)	|http://1.1.1.1/a/b.html#c　のようなフラグメント識別子を禁止(true or false[default])
+|url	|正当なURLのフォーマットかをチェック|schemes (任意)	|カンマセパレータのスキーマのリスト(default=http,https,ftp)|
+|notEqual	|–|同名のタグと同等の機能を果たす|–|	
+|notMatch	|–|同名のタグと同等の機能を果たす|–|	
+|notPresent	|–|同名のタグと同等の機能を果たす|–|	
+|present	|–|同名のタグと同等の機能を果たす|–|	
+
+以下サイトを元に作成
+参考サイト：そるでぶろぐ | 株式会社アークシステムの技術者ブログ（https://devlog.arksystems.co.jp/2011/01/24/10500/ ）
+
+##２-５.validator-rules.xmlについて
+`validator-rules.xml`は入力チェックのルールを定義しています。
+
+###Struts1.2系との違い
+Struts1.2系ではWEB-INF配下にvalidator-rules.xmlが存在しますが、
+Struts1.3.10ではstruts-core-1.3.10.jarに含まれています。
+
+```xml:struts-config.xml（Struts1.2系）
+  <plug-in className="org.apache.struts.validator.ValidatorPlugIn">
+    <set-property　property="pathnames"　value="/WEB-INF/validator-rules.xml,/WEB-INF/validation.xml"/>
+  </plug-in>
+```
+
+```xml:struts-config.xml（Struts1.3.10）
+  <plug-in className="org.apache.struts.validator.ValidatorPlugIn">
+    <set-property　property="pathnames"　value="/org/apache/struts/validator/validator-rules.xml,/WEB-INF/validation.xml"/>
+  </plug-in>
+```
+
+Struts1.2系で、独自の入力チェックルールを定義する場合は、WEB-INF配下のvalidator-rules.xmlを編集すれば良いですが、Struts1.3.10独自の独自の入力チェックルールを定義する場合は別ファイルを作成し、 WEB-INF配下に置いた上でstruts-config.xmlに追記すればよいです。
+
+
+###validator-rules.xmlの中身と各タグの説明
+
+```xml:validator-rules.xml
+<form-validation>
+    <global>
+        <validator name="required"
+                   classname="org.apache.struts.validator.FieldChecks"
+                   method="validateRequired"
+                   methodParams="java.lang.Object,
+                       org.apache.commons.validator.ValidatorAction,
+                       org.apache.commons.validator.Field,
+                       org.apache.struts.action.ActionMessages,
+                       org.apache.commons.validator.Validator,
+                       javax.servlet.http.HttpServletRequest"
+                   msg="errors.required"/>
+<!-- -------------------------中略-------------------------- -->
+    </global>
+</form-validation>
+```
+
+|属性|説明|
+|----|----|
+|name|validatorの名称を指定します|
+|class|クラス名を指定します|
+|method|メソッド名を指定します|
+|methodParams|メソッド引数を指定します|
+|depends|対象のvalidotorルールを実行する前に実行すべきvalidatorルールがある場合に、そのルール名を指定します。|
+|msg|入力チェックエラー時のエラーメッセージのメッセージkeyを指定します。|
+
+##３.アクションクラス
+
+##３-１.アクションクラスの概要
+アクションフォームにリクエストが設定された後に実行されるクラスとなります。
+アプリケーションで行うビジネスロジックはこのアクションクラスに記述します。
+
+アクションクラスの構成の特徴は以下となります。
+
+* **org.apache.struts.action.Actionを継承**
+* **executeメソッドをオーバーライドして、ビジネスロジックを記述**
+* **executeメソッドの戻り値にActionMappingオブジェクトの`findForward`メソッドを用いて、どのjspに遷移するか指定**
+
+```java
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.struts.action.Action;
+import org.apache.struts.action.ActionForm;
+import org.apache.struts.action.ActionForward;
+import org.apache.struts.action.ActionMapping;
+
+public final class SampleAction extends Action {  
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+　　　　　　　//ビジネスロジックの記述
+            
+            //設定ファイル（struts-config.xml）のforwardタグのname属性に記載されているjspのパスに遷移
+            return mapping.findForward("success");  
+    }
+}
+```
+
+##３-２.executeメソッドの引数について
+
+Actionクラスでメインロジックを記述する`execute`メソッドでは、
+以下４つの引数を渡していますが、それぞれのクラスの役割について説明します。
+
+* **ActionMapping**
+* **ActionForm**
+* **HttpServletRequest**
+* **HttpServletResponse**
+
+```java
+ public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response)
+```
+
+###ActionMappingについて
+
+ActionMappingクラスはstruts-config.xmlの`<action>`エレメントで定義した内容が保持されています。
+主な役割については以下が挙げられます。
+
+####ActionMappingの主な役割１：`findForwardメソッド`を用いた遷移先の指定
+
+ActionMappingは**findForwardメソッドを用いて、遷移先の指定が可能**です。
+
+具体的には、findForwardメソッドの引数の値と一致している、struts-config.xmlのforwardタグのname属性に記載されているjspのパスに遷移します。
+
+以下の実装では、findForwardの引数に`"success"`を指定しており、struts-config.xml内のname属性が"success"のforwardタグを確認すると`/WEB-INF/jsp/sample.jsp`に遷移することがわかります。
+
+
+```java:SampleAction.java（一部抜粋）
+//Actionクラス内でfindForwardの引数に"success"を指定して返却
+return mapping.findForward("success");  
+```
+
+```xml:struts-config.xml（一部抜粋）  
+<!-- Actionクラスで返却された文字列と一致したname属性に指定したpathに遷移 -->
+<forward name="success" path="/WEB-INF/jsp/sample.jsp"/> 
+```
+
+####ActionMappingの主な役割２：`<action>`エレメント内の属性の取得
+**getPathメソッドなど**で`<action>`エレメント内の属性を取得することが可能です。
+
+struts-config.xmlの**path/type/name/scope/validate/input属性**の値を出力する実装例は以下となります。
+
+```xml:struts-config.xml
+<action
+ path="/sample"
+ type="package.SampleAction"   
+ name="sampleForm"             
+ scope="session"              
+ validate="true"             
+ input="/index.jsp">    
+<forward name="success" path="/WEB-INF/jsp/sample.jsp"/> 
+</action>
+```
+
+```java:SampleAction.java
+public final class SampleAction extends Action {  
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        //<action>エレメントの属性の取得
+        String path = mapping.getPath();
+        String type = mapping.getType();
+        String name = mapping.getName();
+        String scope = mapping.getScope();
+        boolean validate = mapping.getValidate();
+        String input = mapping.getInput();
+        
+        System.out.println("path:" + path);
+        System.out.println("type:" + type);
+        System.out.println("name:" + name);
+        System.out.println("scope:" + scope);
+        System.out.println("validate:" + validate);
+        System.out.println("input:" + input);
+
+        return mapping.findForward("success");  
+    }
+}
+```
+
+```:実行結果
+path:/sample
+type:package.SampleAction
+name:sampleForm
+scope:session
+validate:true
+input:/index.jsp
+```
+
+###ActionFormについて
+**[2.アクションフォーム](#２アクションフォーム)**で説明した通り、フォームから入力されたリクエストデータが保持されています。
+
+ActionFromとDynaActionFormに分かれますが、executeメソッド内でのフォームの値の取得の実装例は以下となります。
+###[ActionFrom](#２-１アクションフォーム)の場合
+ActionFrom内で実装したgetter/setterを用いて、プロパティの取得及び設定が可能となります。
+
+```java
+public final class SampleAction extends Action {  
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        UserActionForm UserActionForm = (UserActionForm)form;
+        String id = UserActionForm.getId();
+        String pass = UserActionForm.getPass();
+
+        return mapping.findForward("success");  
+    }
+}
+```
+
+###[DynaActionForm](#２-２dynaactionformについて)の場合
+
+####プロパティの取得方法について
+**getメソッド**を用いて取得が可能となります。
+引数に取得したいプロパティ名を渡す必要があります。
+
+```java:SampleAction.java（一部抜粋）
+        // プロパティの取得
+        String id = (String) UserActionForm.get("id");
+        String pass = (String) UserActionForm.get("pass");
+```
+
+####プロパティの設定方法について
+**setメソッド**を用いて設定が可能となります。
+引数に設定したいプロパティ名と、設定値を渡す必要があります。
+
+```java:SampleAction.java（一部抜粋）
+        // プロパティの設定
+        UserActionForm.set("id", "strutsuser");
+        UserActionForm.set("pass", "1111");
+```
+
+```java:SampleAction.java（全量）
+public final class SampleAction extends Action {  
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        UserActionForm UserActionForm = (UserActionForm)form;
+        // プロパティの取得
+        String id = (String) UserActionForm.get("id");
+        String pass = (String) UserActionForm.get("pass");
+        // プロパティの設定
+        UserActionForm.set("id", "strutsuser");
+        UserActionForm.set("pass", "1111");
+
+        return mapping.findForward("success");  
+    }
+}
+```
+
+###HttpServletRequestについて
+ActionFormで取得できない情報を取得するために使用します。
+また、`HttpServletRequest#setAttribute()`や`HttpSession#setAttribute()`を用いて、Actionクラスで生成したオブジェクトをJSPに渡すことが可能です。
+
+####実装例
+
+```java:BeanWriteTag.java
+package model;
+
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Date;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import org.apache.struts.action.Action;
+import org.apache.struts.action.ActionForm;
+import org.apache.struts.action.ActionForward;
+import org.apache.struts.action.ActionMapping;
+
+public class BeanWriteTag extends Action {
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response) throws Exception {
+        HttpSession session = request.getSession();
+        Date date = new Date();
+        ZoneId zone = ZoneId.of("Asia/Tokyo");
+        LocalTime time = LocalTime.now(zone);
+    	request.setAttribute("time", time);
+        session.setAttribute("date", date);
+    	return mapping.findForward("success");
+    }
+}
+```
+
+```jsp:BeanWriteTag.jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" %>
+<%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
+<%@ taglib uri="http://struts.apache.org/tags-logic" prefix="logic" %>
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+<p>request#setAttribute()：<bean:write name="date" scope="session"/></p>
+<p>session#setAttribute()：<bean:write name="time" scope="request"/></p>
+</body>
+</html>
+```
+
+####実行結果
+![スクリーンショット 2020-09-21 16.44.52.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/27ac43d2-560b-9297-c8c5-842ae61455e5.png)
+
+
+
+###HttpServletResponse
+forwardを行わずに、このクラス内でHTTPレスポンスを行う場合に使用します。
+
+一例ですが、`HttpServletResponse`インターフェースで定義されている`setHeader`メソッドを用いてforwardを行わずに遷移をすることが可能です。
+（executeメソッドの返り値をnullにした場合にはforward処理は呼び出されません。）
+
+```java
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.struts.action.Action;
+import org.apache.struts.action.ActionForm;
+import org.apache.struts.action.ActionForward;
+import org.apache.struts.action.ActionMapping;
+
+public class HttpResponse extends Action { 
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response) throws Exception {
+
+    	response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
+    	response.setHeader("location", "https://struts.apache.org/");
+		return null;	
+    }
+}
+```
+
+##４.JSP
+
+##４-１.JSPの概要
+MVC構成のビューの役割を持っている機能であり、アクションクラスの処理後に起動され、ブラウザの表示内容を返却します。
+また、JSPは**Strutsが提供しているタグライブラリ**を利用することができ、Javaコードの代わりに専用のタグライブラリを使用することによって、可読性を高める事が可能です。
+
+##４-２.タグライブラリの使用例 - htmlタグライブラリ
+参考として、以下のログイン画面を、strutsのタグライブラリを使用する場合しない場合でどう記述が変わるのか確認します。
+
+<img width="587" alt="スクリーンショット 2019-08-27 11.44.41.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/0eacd240-5e4d-ef6c-74ed-6f5068bdb9ee.png">
+###strutsのタグライブラリを利用しない場合
+strutsのタグライブラリを利用しない場合は以下のような記述になります。（一部抜粋）
+
+```jsp:jsp
+<h1>ログイン</h1>
+<form action="/アプリケーション名/WebContentからのパス" method="post" >
+	<input type="text" name="id" class="id" placeholder="ID" autofocus>
+	<br>
+	<input type="password"  name="password" class="pass" placeholder="PASSWORD">
+	<br>
+	<input type="submit" class="login" value="ログイン">
+</form>
+```
+
+`<input>`タグを用いてID、パスワード、送信ボタンを作成しています。
+###strutsのHTMLタグライブラリを利用した場合
+次にstrutsのHTMLタグライブラリを利用した場合は以下のような記述になります。（一部抜粋）
+
+```jsp:struts
+<h1>ログイン</h1>
+<html:form action="/xxx" focus="id">
+    <html:text styleClass="id"  property="id" value = ""/>
+    <br>	
+    <html:password styleClass="pass" property="pass"  redisplay="false"/>
+    <br>
+    <html:submit styleClass="login" property="submit" value="ログイン"/>
+</html:form>
+```
+このように、`<input>`タグではなく、strutsで提供されているHTMLタグライブラリを用いても、ほぼ同様の記載が可能となります。
+今回の場合は、\<input\>タグで生成された部品が、`<html:text>`、`<html:password>`、`<html:submit>`で記載されている事がわかります。
+
+ただし、strutsのHTMLタグライブラリはHTML5の新規タグには対応していません。
+
+一例ですが、上記に挙げたように、**HTML5にあるplaceholder属性をstrutsのHTMLタグライブラリで利用する事ができません。**
+strutsのHTMLタグライブラリを利用して、HTML5と同様の属性を出力したい場合は、jQueryで以下のコードを追加する必要があります。
+
+```Js:jQuery
+$(function(){
+$(".id").attr('placeholder', 'ID');
+$(".pass").attr('placeholder', 'PASSWORD');
+});
+```
+
+参考（https://log4jk.hatenadiary.org/entry/20130112/p1)
+
+##４-３.タグライブラリの種類
+strutsで提供されている主なタグライブラリは以下となります。
+
+|タグライブラリ名| 概要 |
+|----|----|
+|Beanタグライブラリ|Beanに関連する機能を提供|
+|HTMLタグライブラリ|HTMLのフォーム要素などを表示する機能を提供|
+|Logicタグライブラリ|条件分岐や繰り返し処理などの論理的な機能を提供|
+|Nestedタグライブラリ|ネストしたプロパティにアクセスする機能を提供し、<br>複数のプロパティにアクセスする際により簡潔に記載が可能となる|
+
+###各タグライブラリの利用方法
+
+strutsで用意しているタグライブラリを利用するためには、JSPページの先頭でそれぞれのタグライブラリごとに**taglibディレクティブの宣言**が必要となります。
+
+```jsp
+<%-- Beanタグライブラリの宣言 --%>
+<%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
+<%-- HTMLタグライブラリの宣言 --%>
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<%-- Logicタグライブラリの宣言 --%>
+<%@ taglib uri="http://struts.apache.org/tags-logic" prefix="logic" %>
+<%-- Nestedタグライブラリの宣言 --%>
+<%@ taglib uri="http://struts.apache.org/tags-nested" prefix="nested" %>
+```
+
+###代表的なBeanタグライブラリ
+
+|タグ名| 概要 |
+|----|----|
+|\<bean:define\>|変数を定義する|
+|\<bean:write\>|Beanのプロパティを取得する|
+|\<bean:cookie\>|クッキーを取得する|
+
+###代表的なHTMLタグライブラリ
+
+|タグ名| 概要 |
+|----|----|
+|\<html:button\>|\<input type="button"\>タグを生成する|
+|\<html:checkbox\>|\<input type="checkbox"\>タグを生成する|
+|\<html:form\>|\<form\>タグを生成する|
+|\<html:hidden\>|\<input type="hidden"\>タグを生成する|
+|\<html:image\>|\<input type="image"\>タグを生成する|
+|\<html:link\>|\<a\>タグを生成する|
+|\<html:text\>|\<input type="text"\>タグを生成する|
+|\<html:password\>|\<input type="password"\>タグを生成する|
+|\<html:submit\>|\<input type="submit"\>タグを生成する|
+
+###代表的なLogicタグライブラリ
+
+|タグ名| 概要 |
+|----|----|
+|\<logic:iterate\>|繰り返し処理を行う|
+|\<logic:empty\>|指定された値が、空をどうかを判定する|
+|\<logic:notEmpty\>|指定された値が、空でないかを判定する|
+|\<logic:equal\>|指定された値と、等しいかを判定する|
+|\<logic:notEquals>|指定された値と、等しくないかを判定する|
+
+カスタムタグの詳細な説明に関しては、以下のサイトが参考になります。
+参考（http://struts.wasureppoi.com/taglib/00_taglib.html ）
+
+##５.struts設定ファイル（struts-config.xml）
+
+##５-１.struts設定ファイル（struts-config.xml）の概要
+リクエストと各コンポーネントの関連付けを行う定義ファイルです。
+アクションサーブレットはこの設定ファイルを参照し、リクエストのアクションに一致するアクションパスから、実行するビジネスロジックや、アクションフォーム、バリデーションの有無や遷移先を指定します。
+
+##５-２.実行するビジネスロジックや遷移先の確認方法
+一例として、以下のjspファイルからリクエストを送った際に、
+ビジネスロジックや遷移先がどう決定するかを確認します。
+
+```Jsp:jspファイル
+<!-- <form>タグのアクション属性に実行するアクションを指定 -->
+<html:form action="/sample" method="post"></html:form>
+```
+
+上記jspの`action="/sample"`はリクエストの際に
+**struts-config.xmlの\<action\>エレメントに記載された`/sample`を参照して**
+と解釈すれば良いです。
+そしたら次は、struts-config.xmlの`path="/sample"`と記述されている\<action\>エレメントに定義されている処理を実行します。
+
+```xml:struts-config.xml（一部抜粋）
+<form-beans>
+ <form-bean
+  name="sampleForm"
+  type="package.SampleActionForm"/>
+</form-beans>  
+<action-mappings>
+<action
+ path="/sample"
+ type="package.SampleAction"   ①
+ name="sampleForm"             ②
+ scope="session"               ③
+ validate="true"               ④
+ input="/index.jsp">           ⑤
+<forward name="success" path="/WEB-INF/jsp/sample.jsp"/> ⑥
+</action>
+</action-mappings>
+```
+
+アクションが`"/sample"`だった場合に実施される処理が以下となります。
+①：SampleActionというアクションクラスを実行する
+②：SampleActionFormというアクションフォームを利用する
+③：②のアクションフォームを保持するスコープがsessionである
+④：入力チェックを実施する
+⑤：④の入力チェックでエラーだった場合にindex.jspに遷移する
+⑥：①のアクションクラスの戻り値が"success"の場合に"/WEB-INF/jsp/sample.jsp"に遷移する
+
+##５-３.エレメントの概要
+設定ファイルに記述されている、各エレメントの概要は以下となります。
+###\<action\>エレメントの主な属性
+| 属性| 説明 |
+|----|----|
+|path|jspのアクションとStrutsの設定ファイルを結びつける名称|
+|type|アクションに対応するアクションクラスのクラス名（完全修飾名）|
+|name|アクションに対応するアクションフォーム名（アクションフォーム名は`<form-beans>`エレメントに記載）|
+|scope|アクションフォームを格納するスコープをrequestまたはsessionで指定。（デフォルトはsession）<br/>sessionの場合、HttpSession#setAttribute()でアクションフォームのインスタンスがセッションに保持される。<br/>requestの場合、HttpServletRequest#setAttribute()でアクションフォームのインスタンスがリクエストに保持される。|
+|parameter|汎用目的で使用されるActionのパラメータ<br/>アクションクラスで固有のパラメータを利用するために定義する。(ActionMapping#getParameter()で取得可能）|
+|validate|バリデーションを行う場合はtrueを指定。行わない場合はfalseを指定|
+|input|Validation処理にて入力値エラーが発生した場合の遷移先を指定|
+
+<details><summary>scopeとは</summary>　スコープとは、インスタンスを保存できる領域です。
+　各スコープごとにインスタンスの保存期間が異なり、
+　リクエストスコープに関してはリクエストごとに生成され、レスポンスが返却されるまで有効となります。
+　セッションスコープに関しては複数のリクエストをまたいでインスタンスが有効となり、ブラウザを削除するか明示的に削除するまで継続されます。
+　strutsのスコープに関して、以下のサイトが参考となります。
+　[Struts1のアクションフォームの寿命はいつまでなのか調べる](https://qiita.com/mitsuru793/items/a57eba6d4653e4a2dd23)</details>
+<details><summary>forwardとは</summary>　forwardとは他のリソース（「HTML」「JSP」「Servlet」）に処理を転送する機能です。</details>
+
+
+
+###\<form-beans\>エレメントの主な属性
+| 属性| 説明 |
+|----|----|
+|name|アクションフォームの名前を指定<br>\<action\>エレメントのname属性のアクションフォーム名と一致|
+|type|アクションフォーム名のクラス名（完全修飾名）|
+
+###\<forward\>エレメントの主な属性
+| 属性| 説明 |
+|----|----|
+|name|アクションクラスのexecuteメソッドの戻り値と結びつける名称|
+|forward|遷移先のjspファイル名|
+
+**\<action\>**、**\<form-beans\>**、**\<forward\>**以外のエレメントの概要は以下となります。
+
+| エレメント| 概要 |
+|----|----|
+|\<data-sources\>|データソースの定義|
+|\<global-exceptions\>|共通の例外処理設定|
+|\<global-forwards\>|共通のアクションフォワード設定|
+|\<controller\>|コントローラの定義|
+|\<message-resources\>|メッセージリソースの定義|
+|\<plug-in\>|プラグインの定義|
+
+##６.web.xml
+
+##６-１.web.xmlの概要
+web.xmlは**ServletコンテナがWebアプリケーションの動作を制御するための設定ファイル**です。
+Struts固有のファイルではありませんが、今回はstrutsに関わるweb.xmlの記述について説明していきます。
+
+##６-２.リクエストとアクションサーブレットの関係
+リクエストから、実行するアクションを指定するまでの流れを追って、strutsにおける**web.xml**の役割をみていきたいと思います。
+
+```Jsp:jspファイル(再掲)
+<!-- <form>タグのアクション属性に実行するアクションを指定 -->
+<html:form action="/sample" method="post"></html:form>
+```
+
+上記のように、jspファイルに`<html:form>`タグを記述すると、フォワード時に生成されるHTMLファイルのformタグは以下となり、action属性に**拡張子「.do」が付与**されていることが分かります。
+
+```Jsp:jspファイル(再掲)
+<form name="アクションフォーム名" method="post" action="/コンテキストパス/sample.do"></form>
+```
+
+**↓ リクエスト時のURL**
+<img width="265" alt="スクリーンショット 2019-08-17 18.57.33.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/2c02671d-2c2a-6501-1db0-39ffc2821945.png">
+
+上記のactionでサーバ側にリクエストを送信した際、web.xmlで定義されている設定ファイルに基づいて、実行するアクションが決定します。
+strutsのweb.xmlは通常、以下のように定義されています。
+
+```xml:web.xml
+<servlet>
+ <servlet-name>action</servlet-name>
+ <servlet-class>org.apache.struts.action.ActionServlet</servlet-class>
+  <init-param>
+   <param-name>config</param-name>
+   <param-value>/WEB-INF/struts-config.xml</param-value> <!-- （２） -->
+  </init-param>
+<!-- 中略 -->
+</servlet>
+<!-- 中略 -->
+<servlet-mapping>
+ <servlet-name>action</servlet-name>
+  <url-pattern>*.do</url-pattern> <!-- （１） -->
+ </servlet-mapping>
+```
+
+（１）web.xmlに記載されているURLパターンから、拡張子「.do」のリクエストが**ActionServlet
+（org.apache.struts.action.ActionServlet）**に渡されるということがわかります。
+
+（２）**\<param-value\>**にActionServletの制御を記述した設定ファイルのパスが記載されています。
+今回の場合、**struts-config.xml**がリクエストとアクションの関連付けを行なっており、
+リクエストに指定されたパス`http://ホスト名/コンテキスト名/xxx.do`の`xxx`と`struts-config.xml`の**\<action\>**エレメントのpath属性が一致したアクションを実行しています。
+
+（２）の説明から分かるように、設定ファイルの宣言は**\<param-value\>**で行なっているので、
+設定ファイルを追加したい場合は、**\<param-value\>**内に、ファイル名を追加で記述すれば良いです。
+
+```xml:web.xml（設定ファイルを追加する場合）
+  <init-param>
+   <param-name>config</param-name>
+   <param-value>/WEB-INF/struts-config.xml,
+                /WEB-INF/struts-config-xxx.xml,
+                /WEB-INF/struts-config-xxx.xml,
+                /WEB-INF/struts-config-xxx.xml,
+                .
+                .
+                .
+   </param-value>
+```
+
+##７.メッセージリソースファイル
+
+##７-１.メッセージリソースファイルの概要
+メッセージリソースファイルはstruts内で利用されるメッセージを管理するためのファイルです。
+
+##７-２.メッセージリソースファイルの定義方法
+struts-config.xml内の`<message-resources>`タグのparameter属性に\WEB-INF\classesディレクトリ以降の配置ディレクトリを指定します。
+
+```xml:struts-config.xml
+<message-resources parameter="MessageResources"/>
+```
+
+##７-３.メッセージリソースファイルの定義内容
+キーとメッセージで管理するメッセージを記載します。キーとメッセージの間は「=」で区切ります。
+
+
+```properties:MessageResources_jp.properties
+# -- standard errors --
+errors.header=<div class="err-font" >
+errors.prefix=
+errors.suffix=<br />
+errors.footer=</div >
+# -- validator --
+# --中略 --
+errors.required={0} を入力してください。
+# --中略 --
+field.id=ログインID
+field.pass=パスワード
+errors.login=パスワードに誤りがあります
+```
+
+
+##７-４.定義したメッセージの表示方法
+メッセージリソースファイルで定義したメッセージを出力する一例として以下が挙げられます。
+
+* **`<bean:message>`タグのkey属性に表示するメッセージのメッセージ・リソースファイルのkeyを定義して出力**
+* **ActionMessageオブジェクトの引数にメッセージ・リソースファイルのkey属性を指定して`<html:errors>`タグ`<html:message>`タグでメッセージを出力**
+
+##７-５.メッセージリソースファイルの日本語化について
+メッセージリソースファイルは日本語をUnicodeでエンコードする必要があり、日本語をそのまま定義しても文字化けします。
+
+日本語をUnicodeでエンコードするには`native2ascii`コマンドを利用しする必要があります。
+###native2asciiコマンド
+`native2ascii [ -encoding エンコード方式 ] [ -reverse ] 変換前ファイル 変換後ファイル`
+-encoding：変換前ファイルのエンコード方式を指定。
+-reverse：Unicodeでエンコードされたファイルを元に戻す。
+
+
+
+```properties:MessageResources_jp.properties（変換前）
+field.id=ログインID
+```
+
+```properties:MessageResources_jp.properties（変換後）
+field.id=\u30ED\u30B0\u30A4\u30F3ID
+```
+
+
+#その他のStruts1の機能について
+##例外処理について
+strutsにおいて共通的な例外処理を定義したい場合は、struts-config.xmlの`<global-exceptions>`タグを用います。
+また、処理する例外を複数定義したい場合は、 `<exception>`タグを複数記載する必要があります。
+
+```xml:struts-config.xml
+<global-exceptions>
+　　 <exception
+　　　　　type="java.lang.NumberFormatException"
+　　　　　key="errors.numberformat"
+　　　　　handler="package.exception.ExceptionHandler"
+　　　　　path="/jsp/error.jsp" />
+</global-exceptions>
+```
+
+\<exception\>エレメントの属性の概要は以下となります。
+
+| 属性| 概要 |
+|----|----|
+|type|例外クラス名|
+|key|例外発生時に表示するエラーメッセージのメッセージkey|
+|handler|例外発生時に実行するクラス |
+|path|例外発生時の遷移先のjspファイル名|
+
+##二度押しチェックについて
+Strutsでは同じ処理が複数回実行されることを防止するため、トランザクショントークンを用いたトークンチェックの機能が提供されています。
+流れとしてはざっくり以下となります。
+
+* **アクションクラスでトークンを生成**
+* **生成したトークンはsessionスコープに格納すると共にHTMLのhiddenタグとしてブラウザ側に返却**
+* **次に呼び出されたアクションクラスで、ブラウザとsessionスコープのトークンを比較**
+<img width="866" alt="スクリーンショット 2020-03-29 19.09.15.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/49495481-1fc6-b162-7914-a781ba96f533.png">
+
+###トークンの生成
+トークンの生成は`org.apache.struts.action.Action`クラスのsaveTokenメソッドを利用します。
+
+```Java
+protected void saveToken(HttpServletRquest req)
+```
+
+saveTokenメソッドで生成されたトークンはsessionスコープに`org.apache.struts.taglib.html.TOKEN`というキー名で登録します。
+また、sessionスコープにトークンが登録された場合は、出力されるhtmlには自動的にhiddenタグが挿入され、トークンがセットされます。
+
+###トークンの比較
+
+リクエストとsessionスコープのトークンの値を比較するには`org.apache.struts.action.Action`クラスのisTokenValidメソッドを利用します。
+
+```Java
+protected boolean isTokenValid(HttpServletRquest req, boolean reset)
+```
+
+以下の条件に一致する場合はfalseを返却します。
+
+* リクエストとsessionスコープのトークンの値が異なる
+* リクエストにトークンが存在しない
+* sessionスコープにトークンが存在しない
+
+###トークンの削除
+
+saveTokenメソッドでsessionスコープに格納されたトークンを削除するには、resetTokenメソッドを利用します。
+
+```Java
+protected void resetToken(HttpServletRquest req)
+```
+
+#Struts1の環境構築
+Struts1の環境構築の方法について、今回は自力で構築する方法を紹介していきます。
+なお、環境構築の手順は以下のサイトを参考にしました。
+[Struts1.3.10でWebアプリケーション作成](https://liliel.hateblo.jp/entry/2018/09/05/145011)
+
+また、今回は触れませんが、Mavenを利用して環境構築をする手順は以下が参考になります。
+[[Java]Eclipseでstruts1.3を開発するための環境構築手順](https://qiita.com/hrk_okd/items/9abbab88781783e51c10)
+
+
+
+##Eclipseプロジェクトの作成
+プロジェクト・エクスプローラを右クリック ＞ 新規  ＞ 動的Webプロジェクト　を選択
+![スクリーンショット 2020-08-23 12.06.17.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/2ac0b74c-dbf8-8519-1558-8543608a0c88.png)
+
+プロジェクト名を入力し、「次へ」を押下
+![スクリーンショット 2020-08-23 12.07.06.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/72ea16ac-59a8-0fa0-3a58-782467869025.png)
+
+そのまま「次へ」を押下
+![スクリーンショット 2020-08-23 12.56.01.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/594f1b72-e9a2-b4ea-b851-88395dd083af.png)
+
+「web.xml デプロイメント記述子の生成」にチェックを入れ、「完了」を押下
+![スクリーンショット 2020-08-23 12.56.19.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/88bc62ce-cfe1-eaef-f321-4d6620201c3e.png)
+
+Eclipseプロジェクトが作成作成されていることを確認
+![スクリーンショット 2020-08-23 12.57.03.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/18210e1b-f60e-6b63-32c8-050ea784d8f6.png)
+
+##Struts1のダウンロード
+以下のサイトから、「struts-1.3.10-apps.zip」を選択してダウンロード
+https://struts.apache.org/download.cgi
+![スクリーンショット 2020-08-23 13.01.29.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/adeacfd0-c3e9-343b-6247-0212fcf65004.png)
+
+ダウンロードした「struts-1.3.10-apps.zip」から、「struts-examples-1.3.10.war」ファイルをzipファイルに変換
+![スクリーンショット 2020-08-23 13.03.21.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/3920c1ab-8682-6721-2f59-f40ab9137408.png)
+
+「struts-examples-1.3.10.zip」ファイルを解凍する
+![スクリーンショット 2020-08-23 13.03.41.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/a976ac01-83f2-9eb6-8d23-96cd2a08c00b.png)
+
+
+解凍したファイルから、以下のファイルを今回作成したEclipseプロジェクトにコピーする
+
+* **pages**
+* **WEB-INF**
+* **index.jsp**
+
+![スクリーンショット 2020-08-23 13.04.46.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/0ddfed5c-303c-6ff2-07b2-f394e1962c39.png)
+
+以下のようなフォルダ構成になっていればOK
+![スクリーンショット 2020-08-23 13.38.44.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/48a05917-a302-272b-8468-1849284a1c60.png)
+
+##サーバーの追加
+サーバタブで右クリック ＞ 新規  ＞　サーバー 
+![スクリーンショット 2020-08-23 13.39.24.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/d58b667a-a5ed-3c7a-e3ce-42ac35dc10e3.png)
+
+サーバー名を入力して、「次へ」を押下
+![スクリーンショット 2020-08-23 13.39.52.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/ab9e6832-152a-f6f1-27f6-1ea3e947b8a0.png)
+
+今回作成したEclipseプロジェクトを追加して、「完了」を押下
+![スクリーンショット 2020-08-23 13.40.13.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/421d5573-d9ee-deda-0953-b7d16f916a3d.png)
+
+##アプリケーションの実行
+追加したサーバーを選択して「開始」を押下
+![スクリーンショット 2020-08-23 13.40.55.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/34bf0a3c-9a9f-7e37-b735-f4a1de31cd9b.png)
+
+以下のURLにアクセスして、Welcome画面が表示されることを確認
+http://localhost:8080/プロジェクト名
+![スクリーンショット 2020-09-20 13.09.59.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/275c7d7e-5ca7-e736-e210-206019237e75.png)
+
+これでStruts1の環境構築は完了となります！！
+
+#ログイン画面作成して動作を確認
+
+##実装する機能
+###ログイン画面
+・ユーザIDとパスワードを入力して、ログインを実施
+・パスワードは全ユーザ共通で「1111」
+・入力チェックを行い、問題があればログイン画面にエラーメッセージを表示
+
+<img width="660" alt="スクリーンショット 2019-09-12 18.58.08.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/d3858692-b50a-a8d3-eb2a-5bad4268f6c3.png">
+
+
+###実行結果画面
+・「ログインに成功しました」というメッセージと、ログインしたユーザIDを表示
+
+<img width="658" alt="スクリーンショット 2019-09-12 18.58.42.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/e84f9682-4c6f-f013-38b2-cb685986e805.png">
+
+
+###ログアウト画面
+・セッションを破棄して、ログアウトしましたのメッセージを表示
+
+<img width="659" alt="スクリーンショット 2019-09-12 18.59.02.png" src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/292212/f8707ec6-e008-c4fa-7994-d0cf50544282.png">
+
+##ディレクトリ構成
+```
+struts
+├── WebContent
+│   ├── META-INF
+│   ├── WEB-INF
+│   │   ├── classes
+│   │   │   └── MessageResources.properties
+│   │   ├── jsp
+│   │   │   ├── loginResult.jsp
+│   │   │   └── logout.jsp
+│   │   ├── src
+│   │   │   └── java
+│   │   │       └── MessageResources.properties
+│   │   ├── struts-config.xml
+│   │   ├── validation.xml
+│   │   └── web.xml
+│   ├── css
+│   │   └── style.css
+│   └── index.jsp  
+└── src
+    └── model
+        ├── LoginAction.java
+        ├── LogoutAction.java
+        └── UserActionForm.java
+
+```
+
+##jsp
+###ログイン画面
+```jsp:index.jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%> 
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<!DOCTYPE html>
+<html>
+<head>
+<title>ログイン</title>
+<link rel="stylesheet" type="text/css" href="<html:rewrite page="/css/style.css"/>" >
+</head>
+<body>
+<html:errors />
+<div class="main-div">
+<h1>ログイン</h1>
+<html:form action="/loginResult" focus="id">
+    <html:text styleClass="id"  property="id" value = ""/>
+    <br>	
+    <html:password styleClass="pass" property="pass"  redisplay="false"/>
+    <br>
+    <html:submit styleClass="login" property="submit" value="ログイン"/>
+</html:form>
+</div>
+</body>
+</html>
+```
+
+###ログイン実行結果画面
+```jsp:loginResult.jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" %>
+<%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
+<%@ taglib uri="http://struts.apache.org/tags-logic" prefix="logic" %>
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+
+<logic:notPresent name="id" scope="session">
+    <logic:redirect forward="fail"/>
+</logic:notPresent>
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>メイン</title>
+<link rel="stylesheet" type="text/css" href="<html:rewrite page="/css/style.css"/>" >
+</head>
+<body>
+<div class="main-div">
+<h1>ログイン結果</h1>
+	<p>ログインに成功しました</p>
+	<p>ユーザID：<bean:write name="id" scope="session"/></p>
+	<html:link action="/logout">ログアウト</html:link>
+</div>
+</body>
+</html>
+```
+
+###ログアウト画面
+```jsp:logout.jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ログアウト</title>
+<link rel="stylesheet" type="text/css" href="<html:rewrite page="/css/style.css"/>" >
+</head>
+<body>
+<div class="main-div">
+<h1>ログアウト</h1>
+<p>ログアウトしました</p>
+<a href="/struts/">トップへ</a>
+</div>
+</body>
+</html>
+```
+##アクションクラス
+
+```Java:LoginAction.java
+package model;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import org.apache.struts.action.*;
+
+public final class LoginAction extends Action { 
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        //セッション情報の取得
+        HttpSession session = request.getSession();  
+　　　　　//（１）ActionMessageオブジェクトの生成
+        ActionMessages errors = new ActionMessages(); 
+　　　　　
+        UserActionForm UserActionForm = (UserActionForm)form;
+        String id = UserActionForm.getId();
+        String pass = UserActionForm.getPass();
+
+        if(!(pass.equals("1111"))) { 
+　　　　　　　//（２）ActionMessageオブジェクトの登録
+            errors.add(ActionMessages.GLOBAL_MESSAGE,
+                new ActionMessage("errors.login"));
+　　　　　　　//（３）ActionMessagesオブジェクトをrequestスコープに登録
+            saveErrors(request, errors);
+            return (mapping.findForward("fail"));
+        } else {
+            session.setAttribute("id", id);
+            return mapping.findForward("success");
+        }
+    }
+}
+```
+
+(１)ActionMessageオブジェクトを生成します
+(２)ActionMessage#addメソッドを使用し、ActionMessageオブジェクトを登録します。第一引数には`ActionMessages.GLOBAL_MESSAG`、第二引数に登録するActionMessageオブジェクトを指定します。ActionMessageオブジェクトのコンストラクタの引数にメッセージ・リソースファイルのキーと可変置き換え文字を指定します。
+(３)メッセージをJSPで使用するためにsaveErrorsメソッドを使用して、ActionMessagesオブジェクトをrequestスコープに登録します。
+
+```Java:LogoutAction.java
+package model;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import org.apache.struts.action.*;
+
+public final class LogoutAction extends Action {  
+    public ActionForward execute(ActionMapping mapping,
+            ActionForm form, 
+            HttpServletRequest request,
+            HttpServletResponse response) {
+    	
+	    HttpSession session = request.getSession();
+　　　　　　　//（１）セッションの削除
+	    session.invalidate();
+	    
+	    return mapping.findForward("success");
+    	
+    }
+}
+```
+
+（１）`session.invalidate();`でセッションの削除を実施し、画面遷移をしています。
+##アクションフォーム
+```Java:UserActionForm
+package model;
+import org.apache.struts.action.*;
+import org.apache.struts.validator.*;
+
+public class UserActionForm  extends ValidatorForm {
+
+	  private String id; // ユーザー名
+	  private String pass; // パスワード
+
+
+	  public UserActionForm() {}
+	  
+	  public UserActionForm(String id, String pass) {
+	    this.id = id;
+	    this.pass = pass;
+	  }
+	  public String getId() {
+	    return id;
+	  }
+	  public void setId(String id) {
+            this.id = id;
+          }
+	  public String getPass() {
+	    return pass;
+	  }
+	  public void setPass(String pass) {
+            this.pass = pass;
+          }
+}
+```
+
+##設定ファイル(strtus-config.xml)
+```xml:struts-config.xml
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE struts-config PUBLIC
+          "-//Apache Software Foundation//DTD Struts Configuration 1.3//EN"
+          "http://struts.apache.org/dtds/struts-config_1_3.dtd">
+<struts-config>
+    <form-beans>
+        <form-bean
+            name="UserActionForm"
+            type="model.UserActionForm"/>
+    </form-beans>  
+    <global-forwards>
+        <forward name="fail" path="/index.jsp"/>
+    </global-forwards>
+    <action-mappings>
+        <action
+            path="/Welcome"
+            forward="/pages/Welcome.jsp"/>        
+        <action
+            path="/loginResult"
+            type="model.LoginAction"
+            name="UserActionForm"
+            scope="session"
+            validate="true"
+            input="/index.jsp">
+		<forward name="success" path="/WEB-INF/jsp/loginResult.jsp"/>
+		<forward name="fail" path="/index.jsp"/>
+		</action>   
+		<action
+            path="/logout"
+            type="model.LogoutAction">
+        <forward name="success" path="/WEB-INF/jsp/logout.jsp"/>    
+        </action> 
+    </action-mappings>        
+    <message-resources parameter="resources.application"/>
+    <message-resources parameter="MessageResources"/>
+  <plug-in className="org.apache.struts.validator.ValidatorPlugIn">
+    <set-property
+        property="pathnames"
+        value="/org/apache/struts/validator/validator-rules.xml,
+               /WEB-INF/validation.xml"/>
+  </plug-in>
+</struts-config>
+```
+##Validation.xml
+```xml:validation.xml
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!-- 中略 -->
+<!DOCTYPE form-validation PUBLIC
+     "-//Apache Software Foundation//DTD Commons Validator Rules Configuration 1.3.0//EN"
+     "http://jakarta.apache.org/commons/dtds/validator_1_3_0.dtd">
+<form-validation>
+<!-- 中略 -->
+    <formset>
+        <form name="UserActionForm">
+            <field
+                property="id"
+                depends="required">
+                  <arg key="field.id" />
+            </field>
+            <field
+                property="pass"
+                depends="required">
+                  <arg key="field.pass" />
+            </field>
+        </form>
+    </formset>
+    <formset language="fr">
+        <constant>
+            <constant-name>postalCode</constant-name>
+            <constant-value>^[0-9a-zA-Z]*$</constant-value>
+        </constant>
+        <form name="logonForm">
+            <field
+                property="username"
+                depends="required">
+                    <arg key="logonForm.username"/>
+            </field>
+            <field
+                property="password"
+                depends="required,mask">
+                    <arg key="logonForm.password"/>
+                    <var>
+                        <var-name>mask</var-name>
+                        <var-value>^[0-9a-zA-Z]*$</var-value>
+                    </var>
+            </field>
+        </form>
+   </formset>
+</form-validation>
+```
+##メッセージ･リソースファイル
+```properties:MessageResources_jp.properties
+# -- standard errors --
+errors.header=<div class="err-font" >
+errors.prefix=
+errors.suffix=<br />
+errors.footer=</div >
+# -- validator --
+# --中略 --
+errors.range={0} is not in the range {1} through {2}.
+errors.required={0} を入力してください。
+# --中略 --
+field.id=ログインID
+field.pass=パスワード
+errors.login=パスワードに誤りがあります
+```
+
+#特に勉強になった書籍、サイト
+参考文献と重複しますが、特に勉強になった書籍とサイトを記載します。
+この記事を見た後にもっと詳しく勉強したい方は、以下の書籍とWebサイトを参考にしてください。
+
+##書籍
+Struts逆引き大全333の極意
+https://www.amazon.co.jp/Struts%E9%80%86%E5%BC%95%E3%81%8D%E5%A4%A7%E5%85%A8333%E3%81%AE%E6%A5%B5%E6%84%8F-%E5%9D%82%E7%94%B0-%E5%81%A5%E4%BA%8C/dp/4798007358
+##webサイト
+忘れっぽいエンジニアのJakarta Struts リファレンス
+http://struts.wasureppoi.com
+Webアプリ開発エンジニアのための技術情報サイト[テックスコア]
+https://www.techscore.com/tech/Java/ApacheJakarta/Struts/index/
+フリー教材／Struts１日入門
+https://www.knowledge-ex.jp/opendoc/struts.html
+株式会社アークシステム　Strutsをはじめとするオープンソースプロダクト情報
+https://www.arksystems.co.jp/closeupit/struts/
+
+
+#参考文献
+##書籍　
+Struts逆引き大全333の極意
+https://www.amazon.co.jp/Struts%E9%80%86%E5%BC%95%E3%81%8D%E5%A4%A7%E5%85%A8333%E3%81%AE%E6%A5%B5%E6%84%8F-%E5%9D%82%E7%94%B0-%E5%81%A5%E4%BA%8C/dp/4798007358
+
+スッキリわかるサーブレット＆JSP入門
+https://book.impress.co.jp/books/1112101008
+
+##Webサイト
+忘れっぽいエンジニアのJakarta Struts リファレンス
+http://struts.wasureppoi.com
+
+Webアプリ開発エンジニアのための技術情報サイト[テックスコア]
+https://www.techscore.com/tech/Java/ApacheJakarta/Struts/index/
+
+フリー教材／Struts１日入門
+https://www.knowledge-ex.jp/opendoc/struts.html
+
+株式会社アークシステム　Strutsをはじめとするオープンソースプロダクト情報
+https://www.arksystems.co.jp/closeupit/struts/
+
+＠IT Strutsを使うWebアプリケーション構築術
+https://www.atmarkit.co.jp/ait/series/2515/
+
+struts - 機能リファレンス
+http://pgbox.grush.jp/ref/java/struts/refs/
+
+SEさんの外部記憶装置　まだまだ苦戦
+https://ameblo.jp/system-eng1neer/entry-10385236995.html
+
+世界」旅と子育てとガジェットを愛するエンジニアリングマネージャーのブログ  Struts1.3.5でValidatorを使う
+https://daipresents.com/2008/struts135validator/
+
+雑廉堂の雑記帳　いまさらながらStruts – ActionMessages
+https://www.rough-and-cheap.jp/java/struts_meno_actionmessages/
+
+ウィリアムのいたずらの開発？日記　ＴｏｍｃａｔからＳｔｒｕｔｓの流れを確認する　
+https://blog.goo.ne.jp/xmldtp/e/8da26250101a830f58e0896d0c767333
+
+IT技術三昧 java+struts開発でメッセージ・リソースファイルで日本語を利用(native2asciiコマンド)
+https://www.zanmai.net/blog/data/83.html
+
+log4jk Strutsのカスタムタグで任意の属性を出力したい
+https://log4jk.hatenadiary.org/entry/20130112/p1
+
+Struts 1.3インストールガイド
+http://struts.nomaki.jp/struts1.3/install/document.html
+
+liliel_OvO’s blog  Struts1.3.10でWebアプリケーション作成
+https://liliel.hateblo.jp/entry/2018/09/05/145011
+
